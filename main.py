@@ -1,18 +1,27 @@
-from datetime import datetime
 import logging
 from logging.handlers import RotatingFileHandler
 
-
-import requests
 import telebot
 from telebot import types
 
 from constants import (
+    MESSAGE,
     TELEGRAM_TOKEN,
-    HELP_HTML,
-    WEATHER_TOKEN
+    WEATHER_TOKEN,
 )
 
+from util import (
+    InfoMessage,
+    Weather
+)
+
+# loggers
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    filename='weather_basic_logger.log',
+    filemode='a'
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -23,81 +32,28 @@ handler = RotatingFileHandler('weather_raa_api_bot_logger.log', maxBytes=5000000
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-# This is a simple echo bot using the decorator mechanism.
-# It echoes any incoming text messages.
-API_TOKEN = TELEGRAM_TOKEN
 
-bot = telebot.TeleBot(API_TOKEN)
+# bot
+bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
+count_error = 0
 
-def get_weather(city):
-
-    requests_weather = requests.get(
-        f'https://ru.api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_TOKEN}&units=metric&lang=ru'
-    )
-
-    data = requests_weather.json()
-
-    if data['cod'] == 200:
-        # requests_weather = requests.get(
-        #     f'https://ru.api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_TOKEN}&units=metric&lang=ru'
-        # )
-        # data = requests_weather.json()
-
-        current_date = datetime.fromtimestamp(data['dt'])
-        city = data['name']
-        current_weather = data['weather'][0]['description']  # состояние
-        current_temperature = int(data['main']['temp']) # температура
-        current_temperature_feels_like = int(data['main']['feels_like']) # температура по ощущению
-        current_humidity = int(data['main']['humidity'])  # влажность
-        current_wind = round(data['wind']['speed'], 1) # скорость ветра
-        current_pressure = int(data['main']['pressure']/1.333)  # давление
-        sunrise_time = datetime.fromtimestamp(data['sys']['sunrise'])  # время восхода
-        sunset_time = datetime.fromtimestamp(data['sys']['sunset'])  # время заката
-        weather_icon = data['weather'][0]['icon']
-
-        icons = f'https://openweathermap.org/img/wn/{weather_icon}@2x.png'
-
-        data_weather = (
-            f'Дата: {current_date}\n'
-            f'Город: {city}\nСостояние: {current_weather}\nТемпература: {current_temperature}\n'
-            f'Температура по ощущениям: {current_temperature_feels_like}\n'
-            f'Влажность: {current_humidity}\nСкорость ветра: {current_wind}\n'
-            f'Давление: {current_pressure}\nВосход: {sunrise_time}\nЗакат: {sunset_time}'
-        )
-
-        return (
-            {
-                'data_weather': data_weather,
-                'icons': icons
-            }
-        )
-
-    else:
-        message_error = f'Сбой в работе программы: {data['message']}'
-        logger.error(message_error)
-        return False
-
-
-# Handle '/start' and '/help'
 @bot.message_handler(commands=['start'])
-def send_welcome(message, res=False):
+def send_welcome(message):
 
     logger.info(
-        'Запущена функция send_welcome()'
+        'Обращение к функции send_welcome()'
     )
 
-    # Создание клавиатуры
-    # keyboard = types.ReplyKeyboardMarkup(row_width=2)
-    # button1 = types.KeyboardButton('/help')
-    # # button2 = types.KeyboardButton('Кнопка 2')
-    # # button3 = types.KeyboardButton('Кнопка 3')
-    # keyboard.add(button1)
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    button_help = types.KeyboardButton(text='/help')
+    button_weather = types.KeyboardButton(text='Запросить погоду')
+    keyboard.add(button_help).row(button_weather)
 
     bot.send_message(
         message.chat.id,
         f'Привет {message.from_user.first_name}, I am Weather_Api_Bot.',
-        # reply_markup=keyboard
+        reply_markup=keyboard
     )
 
 
@@ -105,31 +61,60 @@ def send_welcome(message, res=False):
 def help_welcome(message):
 
     logger.info(
-        'Запущена функция help_welcome()'
+        'Обращение к функции help_welcome()'
     )
 
-    bot.send_message(message.chat.id, HELP_HTML, parse_mode='html')
+    bot.send_message(message.chat.id, MESSAGE['help'], parse_mode='html')
 
 
-# Handle all other messages with content_type 'text' (content_types defaults to ['text'])
 @bot.message_handler(func=lambda message: True)
+def weather_request(message):
+
+    if message.text == 'Запросить погоду':
+        bot.send_message(message.chat.id, "Введи название города.")
+        bot.register_next_step_handler(message, info_message)
+
+
 def info_message(message):
+
+    global count_error
 
     city_name =  message.text.strip().lower()
 
-    weather_request = get_weather(city_name)
+    weather_request = Weather(city_name, WEATHER_TOKEN)
+    weather_request = weather_request.get_weather
 
-    if weather_request:
-        weather_icons = weather_request['icons']
+    if weather_request['status'] == 200:
 
-        bot.send_photo(message.chat.id, weather_icons)
-        bot.send_message(message.chat.id, weather_request['data_weather'])
+        weather_data = InfoMessage(weather_request)
+        weather_data = weather_data.get_message
+
+        bot.send_photo(message.chat.id, weather_data['weather_icons'])
+        bot.send_message(message.chat.id, weather_data['info_message'])
     else:
+        report = MESSAGE['no_city']
 
-        report = 'Такого города не существует.\nПовторите запрос'
+        count_error += 1
 
-        bot.send_message(message.chat.id, report)
+        if count_error < 3:
+
+            bot.send_message(message.chat.id, report)
+
+            bot.send_message(message.chat.id, "Введи еще раз название города.")
+            bot.register_next_step_handler(message, info_message)
+        else:
+            count_error = 0
+            bot.send_message(message.chat.id, 'Вы издеваетесь!!!')
 
 
 
-bot.infinity_polling()
+def main():
+    bot.infinity_polling()
+
+
+if __name__ == '__main__':
+    logger.info(
+        'Бот запущен'
+    )
+
+    main()
