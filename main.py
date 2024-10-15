@@ -17,7 +17,7 @@ from util import (
 
 # loggers
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     filename='weather_basic_logger.log',
     filemode='a'
@@ -28,7 +28,11 @@ logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter(
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 )
-handler = RotatingFileHandler('weather_raa_api_bot_logger.log', maxBytes=50000000, backupCount=5)
+handler = RotatingFileHandler(
+    'weather_custom_logger.log',
+    maxBytes=50000000,
+    backupCount=5
+)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
@@ -45,17 +49,16 @@ def send_welcome(message):
         'Обращение к функции send_welcome()'
     )
 
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2, one_time_keyboard=True, is_persistent=True)
     button_help = types.KeyboardButton(text='/help')
     button_weather = types.KeyboardButton(text='Запросить погоду')
-    keyboard.add(button_help).row(button_weather)
+    keyboard.add(button_weather, button_help).row()
 
     first_name = message.from_user.first_name
     last_name=message.from_user.last_name
 
     bot.send_message(
         message.chat.id,
-        # f'Привет {message.from_user.first_name} {message.from_user.last_name},\nЯ Weather_Api_Bot.',
         MESSAGE['start'].format(first_name=first_name, last_name=last_name),
         reply_markup=keyboard
     )
@@ -71,10 +74,8 @@ def help_welcome(message):
     bot.send_message(message.chat.id, MESSAGE['help'], parse_mode='html')
 
 
-@bot.message_handler(func=lambda message: True)
+@bot.message_handler(func=lambda message: message.text == 'Запросить погоду')
 def weather_request(message):
-
-    if message.text == 'Запросить погоду':
         bot.send_message(message.chat.id, "Введи название города.")
         bot.register_next_step_handler(message, info_message)
 
@@ -96,20 +97,19 @@ def info_message(message):
         bot.send_photo(message.chat.id, weather_data['weather_icons'])
         bot.send_message(message.chat.id, weather_data['info_message'])
     else:
-        report = MESSAGE['no_city']
+        report = MESSAGE['no_city'].format(city=message.text)
 
         count_error += 1
 
         if count_error < 3:
 
-            bot.send_message(message.chat.id, report)
+            bot.send_message(message.chat.id, report, parse_mode='html')
 
-            bot.send_message(message.chat.id, "Введи еще раз название города.")
+            bot.send_message(message.chat.id, MESSAGE['repeat_input'])
             bot.register_next_step_handler(message, info_message)
         else:
             count_error = 0
-            bot.send_message(message.chat.id, 'Вы издеваетесь!!!')
-
+            bot.send_message(message.chat.id, MESSAGE['bully'])
 
 
 def main():
