@@ -15,5 +15,6 @@ MESSAGE = {
                 f'В качестве API используется ресурст OpenWeather https://openweathermap.org/'
 
     ),
-    'no_city': 'Такого города не существует.\nПовторите запрос.'
+    'no_city': 'Такого города не существует.\nПовторите запрос.',
+    'start': 'Привет {first_name} {last_name},\nЯ Weather_Api_Bot.',
 }

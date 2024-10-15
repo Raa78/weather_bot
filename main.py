@@ -50,9 +50,13 @@ def send_welcome(message):
     button_weather = types.KeyboardButton(text='Запросить погоду')
     keyboard.add(button_help).row(button_weather)
 
+    first_name = message.from_user.first_name
+    last_name=message.from_user.last_name
+
     bot.send_message(
         message.chat.id,
-        f'Привет {message.from_user.first_name}, I am Weather_Api_Bot.',
+        # f'Привет {message.from_user.first_name} {message.from_user.last_name},\nЯ Weather_Api_Bot.',
+        MESSAGE['start'].format(first_name=first_name, last_name=last_name),
         reply_markup=keyboard
     )
 
