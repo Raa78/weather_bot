@@ -40,6 +40,12 @@ logger.addHandler(handler)
 # bot
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
+# keyboard
+keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+button_help = types.KeyboardButton(text='/help')
+button_weather = types.KeyboardButton(text='Запросить погоду')
+keyboard.add(button_weather, button_help).row()
+
 count_error = 0
 
 @bot.message_handler(commands=['start'])
@@ -48,11 +54,6 @@ def send_welcome(message):
     logger.info(
         'Обращение к функции send_welcome()'
     )
-
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    button_help = types.KeyboardButton(text='/help')
-    button_weather = types.KeyboardButton(text='Запросить погоду')
-    keyboard.add(button_weather, button_help).row()
 
     first_name = message.from_user.first_name
     last_name=message.from_user.last_name
@@ -71,7 +72,11 @@ def help_welcome(message):
         'Обращение к функции help_welcome()'
     )
 
-    bot.send_message(message.chat.id, MESSAGE['help'], parse_mode='html')
+    bot.send_message(
+        message.chat.id,
+        MESSAGE['help'],
+        parse_mode='html'
+    )
 
 
 @bot.message_handler(func=lambda message: message.text == 'Запросить погоду')
@@ -95,7 +100,11 @@ def info_message(message):
         weather_data = weather_data.get_message
 
         bot.send_photo(message.chat.id, weather_data['weather_icons'])
-        bot.send_message(message.chat.id, weather_data['info_message'])
+        bot.send_message(
+            message.chat.id,
+            weather_data['info_message'],
+            reply_markup=keyboard
+        )
     else:
         report = MESSAGE['no_city'].format(city=message.text)
 
@@ -109,7 +118,22 @@ def info_message(message):
             bot.register_next_step_handler(message, info_message)
         else:
             count_error = 0
-            bot.send_message(message.chat.id, MESSAGE['bully'])
+            bot.send_message(
+                message.chat.id,
+                MESSAGE['bully'],
+                reply_markup=keyboard
+            )
+
+
+@bot.message_handler(func=lambda message: True)
+def info_message(message):
+    chat_id = message.chat.id
+
+    bot.send_message(
+        chat_id,
+        MESSAGE['prompt'],
+        reply_markup=keyboard
+    )
 
 
 def main():
