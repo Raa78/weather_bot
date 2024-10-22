@@ -49,7 +49,7 @@ def send_welcome(message):
         'Обращение к функции send_welcome()'
     )
 
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2, one_time_keyboard=True)
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     button_help = types.KeyboardButton(text='/help')
     button_weather = types.KeyboardButton(text='Запросить погоду')
     keyboard.add(button_weather, button_help).row()
