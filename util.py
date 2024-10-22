@@ -36,7 +36,7 @@ class InfoMessage:
     @property
     def get_message(self):
         info_message = (
-            f'Прогноз на: {datetime.fromtimestamp(self.__data['dt']).strftime("%m-%d-%Y %H:%M")}\n'
+            f'Прогноз на: {datetime.fromtimestamp(self.__data['dt']).strftime("%d-%m-%Y %H:%M")}\n'
             f'Город: {self.__data['name']}\n'
             f'Состояние: {self.__data['weather'][0]['description']}\n'
             f'Температура: {int(self.__data['main']['temp'])}°C\n'
