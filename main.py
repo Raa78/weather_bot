@@ -125,17 +125,6 @@ def info_message(message):
             )
 
 
-@bot.message_handler(func=lambda message: True)
-def info_message(message):
-    chat_id = message.chat.id
-
-    bot.send_message(
-        chat_id,
-        MESSAGE['prompt'],
-        reply_markup=keyboard
-    )
-
-
 def main():
     bot.infinity_polling()
 
